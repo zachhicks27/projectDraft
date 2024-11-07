@@ -10,14 +10,10 @@ import os
 import pandas as pd
 import time
 
-def load_and_preprocess_mimic(base_path, cache_dir='cache'):
-    """Enhanced preprocessing with cached ATC mapping."""
+def load_and_preprocess_mimic(base_path):
+    """Enhanced preprocessing with ATC mapping."""
     # Setup logging
     setup_logging()
-    
-    # Create cache directory if it doesn't exist
-    cache_path = Path(cache_dir)
-    cache_path.mkdir(exist_ok=True)
     
     # Load core tables
     logging.info("Loading core tables...")
@@ -29,12 +25,12 @@ def load_and_preprocess_mimic(base_path, cache_dir='cache'):
     diagnoses = pd.read_csv(f'{base_path}/DIAGNOSES_ICD.csv')
     diagnoses_processed, top_diagnoses = get_top_k_diagnoses(diagnoses)
     
-    # Load and process medications with cached ATC mapping
+    # Load and process medications with ATC mapping
     logging.info("Loading and processing prescriptions...")
     prescriptions = pd.read_csv(f'{base_path}/PRESCRIPTIONS.csv')
     prescriptions_processed, top_medications = get_top_k_medications(
         prescriptions,
-        cache_dir=cache_dir
+        atc_csv_path='atc_classes.csv'  # Make sure this path is correct
     )
     
     # Load time series data
@@ -413,14 +409,15 @@ def setup_logging():
         format='%(asctime)s - %(levelname)s - %(message)s'
     )
 
-def get_top_k_medications(prescriptions_df, k=1000, cache_dir='cache'):
+
+def get_top_k_medications(prescriptions_df, k=1000, atc_csv_path='atc_codes.csv'):
     """
     Extract top k most frequent medications and map to ATC codes.
     
     Args:
         prescriptions_df (pd.DataFrame): The PRESCRIPTIONS table
         k (int): Number of top medications to keep (default 1000)
-        cache_dir (str): Directory for cache files
+        atc_csv_path (str): Path to ATC codes CSV file
     
     Returns:
         tuple: (processed prescriptions df with ATC codes, set of top medications)
@@ -438,34 +435,17 @@ def get_top_k_medications(prescriptions_df, k=1000, cache_dir='cache'):
     # Filter prescriptions to only include top k
     prescriptions_processed = prescriptions_df[prescriptions_df['drug'].isin(top_medications)].copy()
     
-    # Ensure cache directory exists
-    cache_path = Path(cache_dir)
-    cache_path.mkdir(exist_ok=True)
-    
-    # Map to ATC codes and remove unmapped drugs
-    prescriptions_processed = map_to_atc_codes(
-        prescriptions_processed,
-        cache_file=cache_path / 'atc_mapping_cache.json'
-    )
-    
-    # Remove rows with unmapped drugs
-    original_len = len(prescriptions_processed)
-    prescriptions_processed = prescriptions_processed.dropna(subset=['atc_code'])
-    removed_rows = original_len - len(prescriptions_processed)
-    print(f"Removed {removed_rows} rows with unmapped drugs")
+    # Map to ATC codes using CSV file
+    prescriptions_processed = map_to_atc_codes(prescriptions_processed, 'atc_classes.csv')
     
     return prescriptions_processed, set(prescriptions_processed['drug'].unique())
 
 if __name__ == "__main__":
     # Set path to your MIMIC-III database
     base_path = 'mimic-iii-clinical-database-demo-1.4'
-    cache_dir = 'cache'
-    
-    # Create cache directory
-    Path(cache_dir).mkdir(exist_ok=True)
     
     # Process the data
-    data = load_and_preprocess_mimic(base_path, cache_dir=cache_dir)
+    data = load_and_preprocess_mimic(base_path)
     
     # Create cohort dictionary for easier handling
     cohort = {
