@@ -1,21 +1,44 @@
-import pandas as pd
-import numpy as np
+from atc_mapper import ATCMapper, map_to_atc_codes
+from collections import defaultdict
+from pathlib import Path
 from sklearn.impute import KNNImputer
-from collections import Counter
+from tqdm import tqdm
+import json
+import logging
+import numpy as np
+import os
+import pandas as pd
+import time
 
-def load_and_preprocess_mimic(base_path):
-    """
-    Enhanced preprocessing following the paper's specifications.
-    """
+def load_and_preprocess_mimic(base_path, cache_dir='cache'):
+    """Enhanced preprocessing with cached ATC mapping."""
+    # Setup logging
+    setup_logging()
+    
+    # Create cache directory if it doesn't exist
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(exist_ok=True)
+    
     # Load core tables
+    logging.info("Loading core tables...")
     patients = pd.read_csv(f'{base_path}/PATIENTS.csv', parse_dates=['dob'])
     admissions = pd.read_csv(f'{base_path}/ADMISSIONS.csv', parse_dates=['admittime'])
     
-    # Load diagnosis and medication data
+    # Load and process diagnoses
+    logging.info("Loading diagnoses...")
     diagnoses = pd.read_csv(f'{base_path}/DIAGNOSES_ICD.csv')
+    diagnoses_processed, top_diagnoses = get_top_k_diagnoses(diagnoses)
+    
+    # Load and process medications with cached ATC mapping
+    logging.info("Loading and processing prescriptions...")
     prescriptions = pd.read_csv(f'{base_path}/PRESCRIPTIONS.csv')
+    prescriptions_processed, top_medications = get_top_k_medications(
+        prescriptions,
+        cache_dir=cache_dir
+    )
     
     # Load time series data
+    print("Loading time series data...")
     chartevents = pd.read_csv(
         f'{base_path}/CHARTEVENTS.csv',
         usecols=['subject_id', 'hadm_id', 'itemid', 'charttime', 'valuenum'],
@@ -33,47 +56,27 @@ def load_and_preprocess_mimic(base_path):
         usecols=['subject_id', 'hadm_id', 'itemid', 'charttime', 'value'],
         parse_dates=['charttime']
     )
-
-    # Process diagnoses and medications
-    diagnoses_processed = process_diagnoses(diagnoses)
-    medications_processed = process_medications(prescriptions)
     
-    # Get weight and height
-    weight_height = extract_weight_height(chartevents)
-    
-    # Process demographics
-    demographics = process_demographics(patients, admissions, weight_height)
-    
-    # Process time series data with enhanced parameters
+    # Process time series
+    print("Processing time series data...")
     timeseries = process_timeseries_enhanced(chartevents, labevents, outputevents)
     
-    # Filter admissions based on complete data
-    valid_admissions = get_valid_admissions(demographics, timeseries, diagnoses_processed, medications_processed)
+    # Get weight and height
+    print("Extracting weight and height...")
+    weight_height = extract_weight_height(chartevents)
     
-    # Filter all dataframes to valid admissions
-    demographics = demographics[demographics['hadm_id'].isin(valid_admissions)]
-    timeseries = timeseries[timeseries['hadm_id'].isin(valid_admissions)]
-    diagnoses_processed = diagnoses_processed[diagnoses_processed['hadm_id'].isin(valid_admissions)]
-    medications_processed = medications_processed[medications_processed['hadm_id'].isin(valid_admissions)]
+    # Get demographics
+    print("Processing demographics...")
+    demographics = process_demographics(patients, admissions, weight_height)
     
-    return demographics, timeseries, diagnoses_processed, medications_processed
-
-def process_medications(prescriptions):
-    """Extract top 1000 medications and map to ATC codes."""
-    # Count medication frequencies
-    med_counts = prescriptions['drug'].value_counts()
-    
-    # Get top 1000 medications
-    top_meds = med_counts.head(1000).index.tolist()
-    
-    # Filter prescriptions to only include top 1000
-    medications_processed = prescriptions[prescriptions['drug'].isin(top_meds)]
-    
-    # TODO: Add ATC mapping when you have access to the mapping tool
-    # The paper mentions using a public tool for ATC mapping
-    # medications_processed['atc_code'] = medications_processed['drug'].map(atc_mapping)
-    
-    return medications_processed
+    return {
+        'demographics': demographics,
+        'diagnoses': diagnoses_processed,
+        'prescriptions': prescriptions_processed,
+        'timeseries': timeseries,
+        'top_diagnoses': top_diagnoses,
+        'top_medications': top_medications
+    }
 
 def process_diagnoses(diagnoses):
     """Extract top 2000 diseases by frequency."""
@@ -212,20 +215,9 @@ def add_split_validation(train, val, test):
         print(f"Measurements per admission: {measurements/admissions:.2f}")
 
 def process_timeseries_enhanced(chartevents, labevents, outputevents):
-    """Enhanced time series processing with additional parameters."""
-    print("\nInitial data shapes:")
-    print(f"Chartevents: {chartevents.shape}")
-    print(f"Labevents: {labevents.shape}")
-    print(f"Outputevents: {outputevents.shape}")
-    
-    # Filter out null hadm_id values first
-    labevents = labevents.dropna(subset=['hadm_id'])
-    
-    print("\nAfter removing null hadm_id values:")
-    print(f"Labevents: {labevents.shape}")
-    
-    # Define relevant physiological parameters (enhanced from paper)
-    vital_signs_ids = {
+    """Enhanced time series processing with specific variables."""
+    # Define ITEMID mappings for required variables
+    variable_ids = {
         'blood_pressure_diastolic': [220051, 220180],
         'blood_pressure_systolic': [220050, 220179],
         'heart_rate': [220045],
@@ -239,68 +231,56 @@ def process_timeseries_enhanced(chartevents, labevents, outputevents):
         'urine_output': [226559]  # Urine output
     }
     
-    # Filter chartevents to only include relevant vital signs
-    chartevents_filtered = chartevents[chartevents['itemid'].isin(
-        [id for ids in vital_signs_ids.values() for id in ids]
-    )]
-    
-    print(f"\nChartevents after filtering for relevant vital signs: {chartevents_filtered.shape}")
+    # Filter chartevents to only include relevant variables
+    relevant_ids = [id for ids in variable_ids.values() for id in ids]
+    chartevents_filtered = chartevents[chartevents['itemid'].isin(relevant_ids)].copy()
     
     # Combine all time series data
+    print("Combining time series data...")
     timeseries = pd.concat([
         chartevents_filtered,
         labevents,
         outputevents.rename(columns={'value': 'valuenum'})
     ])
     
-    print(f"\nCombined time series shape: {timeseries.shape}")
+    # Process into 24-hour units
+    print("Processing into 24-hour units...")
+    timeseries = process_24h_units(timeseries)
     
+    return timeseries
+
+def process_24h_units(timeseries):
+    """Process time series data into 24-hour units."""
     # Sort by time
-    timeseries.sort_values(['subject_id', 'hadm_id', 'charttime'], inplace=True)
+    timeseries = timeseries.sort_values(['subject_id', 'hadm_id', 'charttime'])
     
-    # Group by subject, admission, and itemid before resampling
+    # Set time index
     timeseries.set_index('charttime', inplace=True)
     
-    # Perform resampling with proper handling of the multi-index
-    timeseries_resampled = []
-    
+    # Resample to 24H periods and take mean
+    resampled = []
     for (subject, hadm, item), group in timeseries.groupby(['subject_id', 'hadm_id', 'itemid']):
-        # Resample each group
-        resampled = group['valuenum'].resample('24H').mean().reset_index()
-        resampled['subject_id'] = subject
-        resampled['hadm_id'] = hadm
-        resampled['itemid'] = item
-        timeseries_resampled.append(resampled)
+        # Resample this group
+        group_resampled = group['valuenum'].resample('24H').mean().reset_index()
+        group_resampled['subject_id'] = subject
+        group_resampled['hadm_id'] = hadm
+        group_resampled['itemid'] = item
+        resampled.append(group_resampled)
     
-    # Combine all resampled data
-    timeseries_resampled = pd.concat(timeseries_resampled, ignore_index=True)
+    # Combine resampled data
+    timeseries_resampled = pd.concat(resampled, ignore_index=True)
     
-    # Count missing values per admission
+    # Remove admissions with too many missing values
     missing_counts = (
         timeseries_resampled
         .groupby(['subject_id', 'hadm_id'])
         .apply(lambda x: x['valuenum'].isna().sum())
     )
-    
-    # Get valid admissions (those with 10 or fewer missing values)
     valid_admissions = missing_counts[missing_counts <= 10].index
     
-    # Filter to valid admissions
     timeseries_resampled = timeseries_resampled[
         timeseries_resampled.set_index(['subject_id', 'hadm_id']).index.isin(valid_admissions)
     ]
-    
-    # Ensure columns are in a consistent order
-    timeseries_resampled = timeseries_resampled[[
-        'subject_id', 'hadm_id', 'charttime', 'itemid', 'valuenum'
-    ]]
-    
-    # Print summary statistics
-    print("\nFinal Processing Statistics:")
-    print(f"Number of admissions: {timeseries_resampled['hadm_id'].nunique()}")
-    print(f"Number of unique patients: {timeseries_resampled['subject_id'].nunique()}")
-    print(f"Number of measurements: {len(timeseries_resampled)}")
-    print(f"Number of unique parameters: {timeseries_resampled['itemid'].nunique()}")
     
     return timeseries_resampled.reset_index(drop=True)
 
@@ -399,27 +379,106 @@ def save_processed_data(data_dict, prefix):
         filename = f"{prefix}_{key}.csv"
         df.to_csv(filename, index=False)
         print(f"Saved {filename}")
+        
+def get_top_k_diagnoses(diagnoses_df, k=2000):
+    """
+    Extract top k most frequent diagnoses from ICD-9 codes.
+    
+    Args:
+        diagnoses_df (pd.DataFrame): The DIAGNOSES_ICD table
+        k (int): Number of top diagnoses to keep (default 2000)
+    
+    Returns:
+        tuple: (processed diagnoses df, set of top k diagnoses)
+    """
+    print(f"\nProcessing top {k} diagnoses...")
+    
+    # Count diagnosis frequencies
+    diagnosis_counts = diagnoses_df['icd9_code'].value_counts()
+    print(f"Total unique diagnoses: {len(diagnosis_counts)}")
+    
+    # Get top k diagnoses
+    top_diagnoses = set(diagnosis_counts.head(k).index)
+    print(f"Coverage of top {k} diagnoses: {(diagnosis_counts.head(k).sum() / diagnosis_counts.sum()) * 100:.1f}%")
+    
+    # Filter diagnoses to only include top k
+    diagnoses_processed = diagnoses_df[diagnoses_df['icd9_code'].isin(top_diagnoses)].copy()
+    
+    return diagnoses_processed, top_diagnoses
+
+def setup_logging():
+    """Setup logging configuration"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+
+def get_top_k_medications(prescriptions_df, k=1000, cache_dir='cache'):
+    """
+    Extract top k most frequent medications and map to ATC codes.
+    
+    Args:
+        prescriptions_df (pd.DataFrame): The PRESCRIPTIONS table
+        k (int): Number of top medications to keep (default 1000)
+        cache_dir (str): Directory for cache files
+    
+    Returns:
+        tuple: (processed prescriptions df with ATC codes, set of top medications)
+    """
+    print(f"\nProcessing top {k} medications...")
+    
+    # Count medication frequencies
+    med_counts = prescriptions_df['drug'].value_counts()
+    print(f"Total unique medications: {len(med_counts)}")
+    
+    # Get top k medications
+    top_medications = set(med_counts.head(k).index)
+    print(f"Coverage of top {k} medications: {(med_counts.head(k).sum() / med_counts.sum()) * 100:.1f}%")
+    
+    # Filter prescriptions to only include top k
+    prescriptions_processed = prescriptions_df[prescriptions_df['drug'].isin(top_medications)].copy()
+    
+    # Ensure cache directory exists
+    cache_path = Path(cache_dir)
+    cache_path.mkdir(exist_ok=True)
+    
+    # Map to ATC codes and remove unmapped drugs
+    prescriptions_processed = map_to_atc_codes(
+        prescriptions_processed,
+        cache_file=cache_path / 'atc_mapping_cache.json'
+    )
+    
+    # Remove rows with unmapped drugs
+    original_len = len(prescriptions_processed)
+    prescriptions_processed = prescriptions_processed.dropna(subset=['atc_code'])
+    removed_rows = original_len - len(prescriptions_processed)
+    print(f"Removed {removed_rows} rows with unmapped drugs")
+    
+    return prescriptions_processed, set(prescriptions_processed['drug'].unique())
 
 if __name__ == "__main__":
-    
     # Set path to your MIMIC-III database
     base_path = 'mimic-iii-clinical-database-demo-1.4'
+    cache_dir = 'cache'
+    
+    # Create cache directory
+    Path(cache_dir).mkdir(exist_ok=True)
     
     # Process the data
-    demographics, timeseries, diagnoses, medications = load_and_preprocess_mimic(base_path)
+    data = load_and_preprocess_mimic(base_path, cache_dir=cache_dir)
     
     # Create cohort dictionary for easier handling
     cohort = {
-        'demographics': demographics,
-        'timeseries': timeseries,
-        'diagnoses': diagnoses,
-        'medications': medications
+        'demographics': data['demographics'],
+        'timeseries': data['timeseries'],
+        'diagnoses': data['diagnoses'],
+        'prescriptions': data['prescriptions']
     }
     
     # Split data into train/val/test
-    train_admissions, val_admissions, test_admissions = train_val_test_split(demographics)
+    train_admissions, val_admissions, test_admissions = train_val_test_split(data['demographics'])
     
-    # Create train/val/test datasets
+    # Create dictionary for splits
     splits = {
         'train': train_admissions,
         'val': val_admissions,
@@ -434,20 +493,19 @@ if __name__ == "__main__":
         }
         save_processed_data(split_data, split_name)
 
-    # In main:
-    if demographics['hadm_id'].nunique() < 100:
+    # Print warnings about dataset size
+    if data['demographics']['hadm_id'].nunique() < 100:
         print("\nWARNING: Using demo dataset - results will not match paper")
 
-    # Add minimum admission threshold
     if len(val_admissions) < 1000:
         print("\nWARNING: Small number of valid admissions")
     
     # Print summary statistics
     print("\nDataset Statistics:")
-    print(f"Total number of unique patients: {demographics['subject_id'].nunique()}")
-    print(f"Total number of hospital admissions: {demographics['hadm_id'].nunique()}")
-    print(f"Number of unique diagnoses: {diagnoses['icd9_code'].nunique()}")
-    print(f"Number of unique medications: {medications['drug'].nunique()}")
+    print(f"Total number of unique patients: {data['demographics']['subject_id'].nunique()}")
+    print(f"Total number of hospital admissions: {data['demographics']['hadm_id'].nunique()}")
+    print(f"Number of unique diagnoses: {data['diagnoses']['icd9_code'].nunique()}")
+    print(f"Number of unique medications: {data['prescriptions']['drug'].nunique()}")
     
     print("\nSplit Statistics:")
     print(f"Training admissions: {len(train_admissions)}")
@@ -455,9 +513,9 @@ if __name__ == "__main__":
     print(f"Testing admissions: {len(test_admissions)}")
     
     print("\nDemographic Statistics:")
-    print(f"Age statistics:\n{demographics['age'].describe()}")
-    print(f"\nGender distribution:\n{demographics['gender'].value_counts(normalize=True)}")
+    print(f"Age statistics:\n{data['demographics']['age'].describe()}")
+    print(f"\nGender distribution:\n{data['demographics']['gender'].value_counts(normalize=True)}")
     
     print("\nTime Series Statistics:")
-    print(f"Unique physiological parameters: {timeseries['itemid'].nunique()}")
-    print(f"Average measurements per admission: {len(timeseries) / demographics['hadm_id'].nunique():.2f}")
+    print(f"Unique physiological parameters: {data['timeseries']['itemid'].nunique()}")
+    print(f"Average measurements per admission: {len(data['timeseries']) / data['demographics']['hadm_id'].nunique():.2f}")
