@@ -1,0 +1,3 @@
+subject_id,hadm_id,gender,age,weight,height,religion,language,marital_status,ethnicity
+41976,174863,M,65,170.9,130.0,CATHOLIC,SPAN,MARRIED,HISPANIC/LATINO - PUERTO RICAN
+41976,151798,M,65,163.0,69.0,CATHOLIC,SPAN,MARRIED,HISPANIC/LATINO - PUERTO RICAN
