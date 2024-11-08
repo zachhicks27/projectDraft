@@ -1,4 +1,4 @@
-from atc_mapper import ATCMapper, map_to_atc_codes
+from src.preprocessing.atc_mapper import ATCMapper, map_to_atc_codes
 from collections import defaultdict
 from pathlib import Path
 from sklearn.impute import KNNImputer
@@ -8,6 +8,7 @@ import logging
 import numpy as np
 import os
 import pandas as pd
+
 import time
 
 def load_and_preprocess_mimic(base_path):
@@ -366,15 +367,6 @@ def train_val_test_split(data, train_size=0.8, val_size=0.1, random_state=42):
     test_admissions = unique_admissions[val_idx:]
     
     return train_admissions, val_admissions, test_admissions
-
-def save_processed_data(data_dict, prefix):
-    """
-    Save all components of the processed data with consistent naming.
-    """
-    for key, df in data_dict.items():
-        filename = f"{prefix}_{key}.csv"
-        df.to_csv(filename, index=False)
-        print(f"Saved {filename}")
         
 def get_top_k_diagnoses(diagnoses_df, k=2000):
     """
@@ -436,13 +428,35 @@ def get_top_k_medications(prescriptions_df, k=1000, atc_csv_path='atc_codes.csv'
     prescriptions_processed = prescriptions_df[prescriptions_df['drug'].isin(top_medications)].copy()
     
     # Map to ATC codes using CSV file
-    prescriptions_processed = map_to_atc_codes(prescriptions_processed, 'atc_classes.csv')
+    prescriptions_processed = map_to_atc_codes(prescriptions_processed, r'data\atc_classes.csv')
     
     return prescriptions_processed, set(prescriptions_processed['drug'].unique())
 
+def save_processed_data(data_dict, prefix, output_dir='data/processed'):
+    """
+    Save all components of the processed data with consistent naming.
+    
+    Args:
+        data_dict (dict): Dictionary of dataframes to save
+        prefix (str): Prefix for filenames (train/val/test)
+        output_dir (str): Directory to save files to
+    """
+    # Create output directory if it doesn't exist
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    for key, df in data_dict.items():
+        filename = output_path / f"{prefix}_{key}.csv"
+        df.to_csv(filename, index=False)
+        print(f"Saved {filename}")
+
 if __name__ == "__main__":
-    # Set path to your MIMIC-III database
-    base_path = 'mimic-iii-clinical-database-demo-1.4'
+    # Set paths
+    base_path = Path('data\mimic-iii-clinical-database-demo-1.4')
+    processed_path = Path('data/processed')
+    
+    # Create directories if they don't exist
+    processed_path.mkdir(parents=True, exist_ok=True)
     
     # Process the data
     data = load_and_preprocess_mimic(base_path)
@@ -465,37 +479,68 @@ if __name__ == "__main__":
         'test': test_admissions
     }
     
-    # Split and save each portion
+    # Split and save each portion to processed directory
     for split_name, split_admissions in splits.items():
         split_data = {
             key: df[df['hadm_id'].isin(split_admissions)]
             for key, df in cohort.items()
         }
-        save_processed_data(split_data, split_name)
+        save_processed_data(split_data, split_name, processed_path)
+        
+    # Save additional metadata
+    metadata = {
+        'top_diagnoses': list(data['top_diagnoses']),
+        'top_medications': list(data['top_medications'])
+    }
+    with open(processed_path / 'metadata.json', 'w') as f:
+        json.dump(metadata, f)
 
     # Print warnings about dataset size
     if data['demographics']['hadm_id'].nunique() < 100:
         print("\nWARNING: Using demo dataset - results will not match paper")
+        logging.warning("Using demo dataset - results will not match paper")
 
     if len(val_admissions) < 1000:
         print("\nWARNING: Small number of valid admissions")
+        logging.warning("Small number of valid admissions")
     
     # Print summary statistics
     print("\nDataset Statistics:")
-    print(f"Total number of unique patients: {data['demographics']['subject_id'].nunique()}")
-    print(f"Total number of hospital admissions: {data['demographics']['hadm_id'].nunique()}")
-    print(f"Number of unique diagnoses: {data['diagnoses']['icd9_code'].nunique()}")
-    print(f"Number of unique medications: {data['prescriptions']['drug'].nunique()}")
+    stats = {
+        "Total number of unique patients": data['demographics']['subject_id'].nunique(),
+        "Total number of hospital admissions": data['demographics']['hadm_id'].nunique(),
+        "Number of unique diagnoses": data['diagnoses']['icd9_code'].nunique(),
+        "Number of unique medications": data['prescriptions']['drug'].nunique(),
+        "Training admissions": len(train_admissions),
+        "Validation admissions": len(val_admissions),
+        "Testing admissions": len(test_admissions),
+        "Unique physiological parameters": data['timeseries']['itemid'].nunique(),
+        "Average measurements per admission": len(data['timeseries']) / data['demographics']['hadm_id'].nunique()
+    }
     
-    print("\nSplit Statistics:")
-    print(f"Training admissions: {len(train_admissions)}")
-    print(f"Validation admissions: {len(val_admissions)}")
-    print(f"Testing admissions: {len(test_admissions)}")
+    # Save statistics
+    with open(processed_path / 'statistics.json', 'w') as f:
+        json.dump(stats, f, indent=4)
+    
+    # Print statistics
+    for key, value in stats.items():
+        if isinstance(value, float):
+            print(f"{key}: {value:.2f}")
+        else:
+            print(f"{key}: {value}")
     
     print("\nDemographic Statistics:")
-    print(f"Age statistics:\n{data['demographics']['age'].describe()}")
-    print(f"\nGender distribution:\n{data['demographics']['gender'].value_counts(normalize=True)}")
+    age_stats = data['demographics']['age'].describe().to_dict()
+    gender_stats = data['demographics']['gender'].value_counts(normalize=True).to_dict()
     
-    print("\nTime Series Statistics:")
-    print(f"Unique physiological parameters: {data['timeseries']['itemid'].nunique()}")
-    print(f"Average measurements per admission: {len(data['timeseries']) / data['demographics']['hadm_id'].nunique():.2f}")
+    # Save demographic statistics
+    demo_stats = {
+        'age_statistics': age_stats,
+        'gender_distribution': gender_stats
+    }
+    with open(processed_path / 'demographic_statistics.json', 'w') as f:
+        json.dump(demo_stats, f, indent=4)
+    
+    # Print demographic statistics
+    print(f"Age statistics:\n{pd.Series(age_stats)}")
+    print(f"\nGender distribution:\n{pd.Series(gender_stats)}")

@@ -1,0 +1,11 @@
+{
+    "Total number of unique patients": 98,
+    "Total number of hospital admissions": 127,
+    "Number of unique diagnoses": 581,
+    "Number of unique medications": 490,
+    "Training admissions": 101,
+    "Validation admissions": 13,
+    "Testing admissions": 13,
+    "Unique physiological parameters": 182,
+    "Average measurements per admission": 17.921259842519685
+}

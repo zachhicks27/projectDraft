@@ -1,5 +1,4 @@
 import torch
-
 print("PyTorch version:", torch.__version__)
 print("CUDA is available:", torch.cuda.is_available())
 print("CUDA version:", torch.version.cuda)
