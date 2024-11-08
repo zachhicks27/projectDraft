@@ -1,0 +1,136 @@
+Filename: test_demographics.csv
+Column Names:
+subject_id, hadm_id, gender, age, weight, height, religion, language, marital_status, ethnicity
+First Row of Data:
+10042.0, 148562.0, M, 70.0, 151.5, 87.4, UNOBTAINABLE, nan, nan, WHITE
+
+----------------------------------------
+
+Filename: test_diagnoses.csv
+Column Names:
+row_id, subject_id, hadm_id, seq_num, icd9_code
+First Row of Data:
+112654, 10042, 148562, 1, 41071
+
+----------------------------------------
+
+Filename: test_medications.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route
+First Row of Data:
+3306070, 41976, 151798, nan, 2202-02-15 00:00:00, 2202-02-19 00:00:00, MAIN, Acetaminophen (Liquid), Acetaminophen (Liquid), Acetaminophen (Liquid), ACET650L, 65758.0, 121065721.0, 650mg UD Cup, 650, mg, 1, UDCUP, PO/NG
+
+----------------------------------------
+
+Filename: test_prescriptions.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route, atc_code
+First Row of Data:
+385299, 43879, 158100, 264258.0, 2106-08-31 00:00:00, 2106-08-31 00:00:00, MAIN, Magnesium Sulfate, nan, nan, MAG2PM, 16546.0, 409672924.0, 2 g / 50 mL Premix Bag, 4, gm, 2, BAG, IV, A12C
+
+----------------------------------------
+
+Filename: test_timeseries.csv
+Column Names:
+charttime, valuenum, subject_id, hadm_id, itemid
+First Row of Data:
+2193-10-15, nan, 40286, 109698.0, 50800
+
+----------------------------------------
+
+Filename: train_demographics.csv
+Column Names:
+subject_id, hadm_id, gender, age, weight, height, religion, language, marital_status, ethnicity
+First Row of Data:
+10006.0, 142345.0, F, 70.0, 175.82, 86.4, CATHOLIC, nan, SEPARATED, BLACK/AFRICAN AMERICAN
+
+----------------------------------------
+
+Filename: train_diagnoses.csv
+Column Names:
+row_id, subject_id, hadm_id, seq_num, icd9_code
+First Row of Data:
+112344, 10006, 142345, 1, 99591
+
+----------------------------------------
+
+Filename: train_medications.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route
+First Row of Data:
+607322, 10065, 183314, 245091.0, 2189-09-08 00:00:00, 2189-09-18 00:00:00, MAIN, Heparin Flush CVL  (100 units/ml), Heparin Flush CVL  (100 units/ml), Heparin Flush, HEPA100SYR, 6532.0, 64253033335.0, 100Units/mL-5mL Syringe, 1, ml, 0.2, SYR, IV
+
+----------------------------------------
+
+Filename: train_prescriptions.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route, atc_code
+First Row of Data:
+32601, 42458, 159647, nan, 2146-07-21 00:00:00, 2146-07-22 00:00:00, MAIN, Bisacodyl, Bisacodyl, Bisacodyl, BISA5, 2947.0, 536338101.0, 5 mg Tab, 10, mg, 2, TAB, PO, A06A
+
+----------------------------------------
+
+Filename: train_timeseries.csv
+Column Names:
+charttime, valuenum, subject_id, hadm_id, itemid
+First Row of Data:
+2189-09-08, 50.63636363636363, 10065, 183314.0, 40055
+
+----------------------------------------
+
+Filename: unmapped_drugs.csv
+Column Names:
+drug, standardized_name
+First Row of Data:
+Pneumococcal Vac Polyvalent, PNEUMOCOCCAL VAC POLYVALENT
+
+----------------------------------------
+
+Filename: unmapped_drugs_detailed.csv
+Column Names:
+drug, standardized_name
+First Row of Data:
+Pneumococcal Vac Polyvalent, PNEUMOCOCCAL VAC POLYVALENT
+
+----------------------------------------
+
+Filename: val_demographics.csv
+Column Names:
+subject_id, hadm_id, gender, age, weight, height, religion, language, marital_status, ethnicity
+First Row of Data:
+10011.0, 105331.0, F, 36.0, 104.68, 102.6, CATHOLIC, nan, SINGLE, UNKNOWN/NOT SPECIFIED
+
+----------------------------------------
+
+Filename: val_diagnoses.csv
+Column Names:
+row_id, subject_id, hadm_id, seq_num, icd9_code
+First Row of Data:
+112394, 10011, 105331, 1, 570
+
+----------------------------------------
+
+Filename: val_medications.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route
+First Row of Data:
+3372002, 43779, 186071, nan, 2173-11-27 00:00:00, 2173-11-29 00:00:00, MAIN, Influenza Virus Vaccine, Influenza Virus Vaccine, Influenza Virus Vaccine, INFV, 64182.0, 58160087546.0, 0.5mL Syringe, 0.5, mL, 1.0, SYR, IM
+
+----------------------------------------
+
+Filename: val_prescriptions.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route, atc_code
+First Row of Data:
+735113, 10124, 170883, 237528.0, 2192-05-15 00:00:00, 2192-05-16 00:00:00, MAIN, Insulin, Insulin, Insulin Glargine, GLAR100I, 47780.0, 88222033.0, 10mLVial, 28, UNIT, 0.028, VIAL, SC, A10A
+
+----------------------------------------
+
+Filename: val_timeseries.csv
+Column Names:
+charttime, valuenum, subject_id, hadm_id, itemid
+First Row of Data:
+2112-05-28, 5.4, 44083, 198330.0, 50852
+
+----------------------------------------
+

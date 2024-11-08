@@ -42,7 +42,8 @@ class MIMICDataset(Dataset):
         print(f"Loaded {len(self.hadm_ids)} admissions for {split}")
         
         # Define feature columns (matching your config)
-        self.lab_cols = ['dbp', 'fio2', 'gcs', 'sbp', 'hr', 'rr', 'spo2', 'temp']
+        self.lab_cols = ['dbp', 'fio2', 'GCS', 'blood_glucose', 'sbp', 'hr', 
+                        'PH', 'rr', 'bos', 'temp', 'urine_output']
         self.demo_cols = ['age', 'gender', 'weight', 'height']
         
     def __len__(self):
@@ -51,10 +52,10 @@ class MIMICDataset(Dataset):
     def __getitem__(self, idx):
         hadm_id = self.hadm_ids[idx]
         
-        # Convert demographics data to numeric, replacing non-numeric values with 0
-        demo = self.demographics[self.demographics['hadm_id'] == hadm_id][self.demo_cols].apply(pd.to_numeric, errors='coerce').fillna(0).values[0]
+        # Get data for specific admission
+        demo = self.demographics[self.demographics['hadm_id'] == hadm_id][self.demo_cols].fillna(0).values[0]
         labs = self.timeseries[self.timeseries['hadm_id'] == hadm_id][self.lab_cols].fillna(0).values
-        diag = self.diagnoses[self.diagnoses['hadm_id'] == hadm_id]['icd9_code'].apply(pd.to_numeric, errors='coerce').fillna(0).astype(int).values
+        diag = self.diagnoses[self.diagnoses['hadm_id'] == hadm_id]['icd9_code'].fillna(0).values
         meds = self.prescriptions[self.prescriptions['hadm_id'] == hadm_id]['atc_code'].fillna(0).values
         
         # Ensure proper shapes
