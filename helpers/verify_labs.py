@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 # Load data
-data_path = Path('data/mimic-iii-clinical-database-demo-1.4')
+data_path = Path('data\mimic-iii-clinical-database-demo-1.4')
 chartevents = pd.read_csv(data_path / 'CHARTEVENTS.csv')
 d_items = pd.read_csv(data_path / 'D_ITEMS.csv')
 
