@@ -32,6 +32,18 @@ def main():
     # Train model
     print("Starting training...")
     model.DTR()
+    
+    # Final evaluation
+    print("\nRunning final evaluation...")
+    final_metrics = model.test_and_evaluate()
+    
+    # Save final metrics
+    results_dir = Path('results')
+    results_dir.mkdir(exist_ok=True)
+    
+    import json
+    with open(results_dir / 'final_metrics.json', 'w') as f:
+        json.dump(final_metrics, f, indent=4)
 
 if __name__ == "__main__":
     main()

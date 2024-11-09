@@ -468,7 +468,93 @@ class SRL_DTR:
             val_metrics = self.validate()
             print(f"Validation Jaccard: {val_metrics['jaccard']:.4f}")
 
+            # Run testing and evaluation every 10 epochs
+            if epoch % 10 == 0:
+                print("\nRunning test evaluation...")
+                test_metrics = self.test_and_evaluate()
+
     def DTR(self):
         """Main entry point for training"""
         print("Starting training...")
         self.train()
+
+    def test_and_evaluate(self):
+        """Test model and create confusion matrix"""
+        self.actor.eval()
+        self.critic.eval()
+        
+        # Initialize containers for predictions and ground truth
+        all_predictions = []
+        all_ground_truth = []
+        
+        with torch.no_grad():
+            for batch in tqdm(self.val_loader, desc="Testing"):
+                states = {k: v.to(self.device) for k, v in batch.items() 
+                         if k not in ['hadm_id', 'medications']}
+                doctor_actions = batch['medications'].to(self.device)
+                
+                # Get model predictions
+                actions = self.actor(
+                    states['labs'],
+                    states['diagnoses'],
+                    states['demographics'],
+                    states['seq_length']
+                )
+                
+                # Convert predictions to binary
+                pred_binary = (actions > 0.5).float()
+                
+                # Convert doctor actions to same format
+                batch_size = doctor_actions.size(0)
+                doctor_actions_one_hot = torch.zeros(batch_size, self.config.med_size, 
+                                                   device=self.device)
+                
+                for b in range(batch_size):
+                    for t in range(doctor_actions.size(1)):
+                        idx = doctor_actions[b, t].long()
+                        if idx < self.config.med_size:
+                            doctor_actions_one_hot[b, idx] = 1.0
+                
+                # Collect predictions and ground truth
+                all_predictions.append(pred_binary.cpu())
+                all_ground_truth.append(doctor_actions_one_hot.cpu())
+        
+        # Concatenate all batches
+        predictions = torch.cat(all_predictions, dim=0)
+        ground_truth = torch.cat(all_ground_truth, dim=0)
+        
+        # Calculate confusion matrix metrics
+        true_pos = ((predictions == 1) & (ground_truth == 1)).sum().item()
+        true_neg = ((predictions == 0) & (ground_truth == 0)).sum().item()
+        false_pos = ((predictions == 1) & (ground_truth == 0)).sum().item()
+        false_neg = ((predictions == 0) & (ground_truth == 1)).sum().item()
+        
+        # Calculate additional metrics
+        precision = true_pos / (true_pos + false_pos) if (true_pos + false_pos) > 0 else 0
+        recall = true_pos / (true_pos + false_neg) if (true_pos + false_neg) > 0 else 0
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        
+        # Print results
+        print("\nConfusion Matrix:")
+        print(f"True Positives: {true_pos}")
+        print(f"True Negatives: {true_neg}")
+        print(f"False Positives: {false_pos}")
+        print(f"False Negatives: {false_neg}")
+        print("\nMetrics:")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 Score: {f1:.4f}")
+        
+        return {
+            'confusion_matrix': {
+                'true_pos': true_pos,
+                'true_neg': true_neg,
+                'false_pos': false_pos,
+                'false_neg': false_neg
+            },
+            'metrics': {
+                'precision': precision,
+                'recall': recall,
+                'f1': f1
+            }
+        }
