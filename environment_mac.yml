@@ -1,0 +1,27 @@
+name: project_draft
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy
+  - pandas
+  - tqdm
+  - scikit-learn
+  - pytorch
+  - torchvision
+  - torchaudio
+  - matplotlib
+  - scipy
+  - requests
+  - tensorboard
+  - pip:
+      - absl-py
+      - mne
+      - pyhealth
+      - pandarallel
+      - protobuf
+      - rdkit
+      - tqdm
+      - termcolor
