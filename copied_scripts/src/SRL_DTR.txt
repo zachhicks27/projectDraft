@@ -42,38 +42,85 @@ class MIMICDataset(Dataset):
         print(f"Loaded {len(self.hadm_ids)} admissions for {split}")
         
         # Define feature columns (matching your config)
-        self.lab_cols = ['dbp', 'fio2', 'GCS', 'blood_glucose', 'sbp', 'hr', 
-                        'PH', 'rr', 'bos', 'temp', 'urine_output']
+        self.lab_cols = ['dbp', 'fio2', 'gcs', 'sbp', 'hr', 'rr', 'spo2', 'temp']
         self.demo_cols = ['age', 'gender', 'weight', 'height']
-        
-    def __len__(self):
-        return len(self.hadm_ids)
     
+        # Add max sequence length
+        self.max_seq_length = 50  # You can adjust this based on your data
+    
+    def pad_sequence(self, sequence, max_length, pad_value=0):
+        """
+        Pad sequence to max_length
+        
+        Args:
+            sequence: numpy array to pad
+            max_length: desired length after padding
+            pad_value: value to use for padding
+        """
+        # Convert to numpy array if not already
+        sequence = np.array(sequence)
+        
+        # Handle empty sequences
+        if len(sequence) == 0:
+            if len(sequence.shape) > 1:
+                return np.zeros((max_length, sequence.shape[1]))
+            return np.zeros((max_length,))
+        
+        # Handle sequences longer than max_length
+        if len(sequence) > max_length:
+            return sequence[:max_length]
+        
+        # Pad sequence
+        pad_width = [(0, max_length - len(sequence))]
+        
+        # Add padding for second dimension if it exists
+        if len(sequence.shape) > 1:
+            pad_width.append((0, 0))
+            
+        return np.pad(sequence, pad_width, 'constant', constant_values=pad_value)
+
     def __getitem__(self, idx):
         hadm_id = self.hadm_ids[idx]
         
         # Get data for specific admission
-        demo = self.demographics[self.demographics['hadm_id'] == hadm_id][self.demo_cols].fillna(0).values[0]
+        demo = self.demographics[self.demographics['hadm_id'] == hadm_id][self.demo_cols].apply(pd.to_numeric, errors='coerce').fillna(0).values[0]
         labs = self.timeseries[self.timeseries['hadm_id'] == hadm_id][self.lab_cols].fillna(0).values
-        diag = self.diagnoses[self.diagnoses['hadm_id'] == hadm_id]['icd9_code'].fillna(0).values
-        meds = self.prescriptions[self.prescriptions['hadm_id'] == hadm_id]['atc_code'].fillna(0).values
+        diag = self.diagnoses[self.diagnoses['hadm_id'] == hadm_id]['icd9_code'].apply(pd.to_numeric, errors='coerce').fillna(0).astype(int).values
+        meds = self.prescriptions[self.prescriptions['hadm_id'] == hadm_id]['atc_code'].apply(pd.to_numeric, errors='coerce').fillna(0).astype(float).values
+
+        # Ensure meds is 2D if it's 1D
+        if len(meds.shape) == 1:
+            meds = meds.reshape(-1, 1)
+        if len(diag.shape) == 1:
+            diag = diag.reshape(-1, 1)
         
-        # Ensure proper shapes
-        if len(labs) == 0:
-            labs = np.zeros((1, len(self.lab_cols)))
-        if len(diag) == 0:
-            diag = np.zeros(1)
-        if len(meds) == 0:
-            meds = np.zeros(1)
+        # Pad sequences
+        labs = self.pad_sequence(labs, self.max_seq_length)
+        diag = self.pad_sequence(diag, self.max_seq_length)
+        meds = self.pad_sequence(meds, self.max_seq_length)
         
-        # Convert to tensors
+        original_length = len(labs) if len(labs.shape) > 1 else 1
+        
+        # Print shapes before return
+        print(f"\nDataset item shapes:")
+        print(f"demographics: {demo.shape}")
+        print(f"labs: {labs.shape}")
+        print(f"diagnoses: {diag.shape}")
+        print(f"medications: {meds.shape}")
+        print(f"seq_length: {[original_length]}")
+        
         return {
             'demographics': torch.FloatTensor(demo),
             'labs': torch.FloatTensor(labs),
-            'diagnoses': torch.LongTensor(diag),
-            'medications': torch.FloatTensor(meds),
-            'hadm_id': hadm_id
+            'diagnoses': torch.LongTensor(diag).squeeze(-1),
+            'medications': torch.FloatTensor(meds).squeeze(-1),
+            'hadm_id': hadm_id,
+            'seq_length': torch.LongTensor([original_length])
         }
+        
+    def __len__(self):
+        return len(self.hadm_ids)
+    
 
 class ExperienceBuffer:
     """Experience replay buffer"""
@@ -186,20 +233,23 @@ class SRL_DTR:
         """Single training step"""
         # Move batch to device
         states = {k: v.to(self.device) for k, v in batch.items() 
-                 if k not in ['hadm_id', 'medications']}
+                if k not in ['hadm_id', 'medications', 'seq_length']}
         doctor_actions = batch['medications'].to(self.device)
+        seq_lengths = batch['seq_length'].to(self.device)
         
         # Forward pass
         actions = self.actor(
             states['labs'],
             states['diagnoses'],
-            states['demographics']
+            states['demographics'],
+            seq_lengths  # Pass sequence lengths to actor
         )
         q_values = self.critic(
             states['labs'],
             actions,
             states['diagnoses'],
-            states['demographics']
+            states['demographics'],
+            seq_lengths  # Pass sequence lengths to critic
         )
         
         # Calculate losses

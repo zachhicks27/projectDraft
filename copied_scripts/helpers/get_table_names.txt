@@ -1,7 +1,7 @@
 import os
 
 # Replace with your folder path
-folder_path = r'C:\Users\ZachDesktop\Documents\GitHub\BD4H\project\draft\mimic-iii-clinical-database-demo-1.4'
+folder_path = r'C:/Users/ZachDesktop/Documents/GitHub/BD4H/project/draft/mimic-iii-clinical-database-demo-1.4'
 
 # List all files in the specified folder
 file_names = os.listdir(folder_path)

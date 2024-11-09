@@ -2,7 +2,7 @@ import os
 import pandas as pd
 
 # Replace with your folder path
-folder_path = r'data\processed'
+folder_path = r'data/processed'
 output_file = 'output_summary2.txt'
 
 # Open the output file for writing

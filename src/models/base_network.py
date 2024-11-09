@@ -1,81 +1,74 @@
+# base_network.py
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Constants used across networks
 HIDDEN1_UNITS = 40
 HIDDEN2_UNITS = 180
 
 class BaseNetwork(nn.Module):
     """Base network with shared components for Actor and Critic"""
-    def __init__(self, lab_size: int, demo_size: int, di_size: int, time_stamp: int):
+    def __init__(self):
+        """Initialize base network"""
         super().__init__()
-        self.time_stamp = time_stamp
-        
-        # Lab test processing
-        self.lab_dropout = nn.Dropout(0.2)
-        self.lstm = nn.LSTM(
-            input_size=lab_size,
-            hidden_size=HIDDEN2_UNITS,
-            batch_first=True
+
+        # Shared attention layer that will be used by both Actor and Critic
+        self.attention = nn.Sequential(
+            nn.Linear(HIDDEN2_UNITS * 2, HIDDEN2_UNITS),
+            nn.Tanh(),
+            nn.Linear(HIDDEN2_UNITS, 1)
         )
-        
-        # Demographics processing
-        self.demo_fc = nn.Linear(demo_size, HIDDEN1_UNITS)
-        self.demo_prelu = nn.PReLU()
-        
-        # Disease processing
-        self.disease_dropout = nn.Dropout(0.2)
-        self.disease_embedding = nn.Embedding(
-            num_embeddings=2001,  # Max disease codes + 1 for padding
-            embedding_dim=HIDDEN1_UNITS,
-            padding_idx=0
-        )
-        
-    def masked_mean(self, x: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
-        """Compute masked mean."""
-        if mask is None:
-            return torch.mean(x, dim=-2)
-        mask = mask.float().unsqueeze(-1)
-        x = x * mask
-        return x.sum(-2) / mask.sum(-2).clamp(min=1e-10)
-
-    def process_labs(self, lab_tests: torch.Tensor) -> torch.Tensor:
-        """Process lab test values through LSTM."""
-        x = self.lab_dropout(lab_tests)
-        x, _ = self.lstm(x)
-        return x
-
-    def process_demographics(self, demographics: torch.Tensor) -> torch.Tensor:
-        """Process demographic features."""
-        x = self.demo_fc(demographics)
-        x = self.demo_prelu(x)
-        x = x.unsqueeze(1).repeat(1, self.time_stamp, 1)
-        return x
-
-    def process_diseases(self, disease: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
-        """Process disease codes."""
-        x = self.disease_dropout(disease)
-        x = self.disease_embedding(x)
-        x = self.masked_mean(x, mask)
-        x = x.unsqueeze(1).repeat(1, self.time_stamp, 1)
-        return x
-
-    def forward(self, lab_tests: torch.Tensor, disease: torch.Tensor, 
-                demographics: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+    
+    def apply_attention(self, sequence, lengths, attention_layer):
         """
-        Forward pass through base network.
+        Apply attention mechanism to sequence
         
         Args:
-            lab_tests: Lab test values [batch, time, lab_size]
-            disease: Disease codes [batch, di_size]
-            demographics: Demographic features [batch, demo_size]
-            mask: Optional mask for disease codes [batch, di_size]
-            
-        Returns:
-            Combined features [batch, time, hidden_size]
+            sequence: Tensor of shape [batch_size, seq_len, hidden_size]
+            lengths: Tensor of shape [batch_size] containing actual sequence lengths
+            attention_layer: The attention layer to use
         """
-        lab_features = self.process_labs(lab_tests)
-        demo_features = self.process_demographics(demographics)
-        disease_features = self.process_diseases(disease, mask)
+        batch_size, seq_len, hidden_size = sequence.shape
         
-        return torch.cat([lab_features, disease_features, demo_features], dim=-1)
+        # Squeeze lengths if needed
+        lengths = lengths.squeeze(-1)  # [batch_size]
+        
+        # Create attention mask
+        device = sequence.device
+        mask = torch.arange(seq_len, device=device)[None, :] < lengths[:, None]
+        mask = mask.float().unsqueeze(-1)
+
+        # Calculate attention scores
+        attention_scores = attention_layer(sequence)  # [batch_size, seq_len, 1]
+        attention_scores = attention_scores.masked_fill(~mask.bool(), float('-inf'))
+        attention_weights = F.softmax(attention_scores, dim=1)
+
+        # Apply attention to sequence
+        context = (attention_weights * sequence).sum(dim=1)
+        return context
+    
+    def target_train(self):
+        """
+        Update target network using soft update
+        
+        θ_target = τ*θ_local + (1 - τ)*θ_target
+        """
+        if self.target_network is None:
+            return
+            
+        for target_param, param in zip(self.target_network.parameters(), 
+                                     self.parameters()):
+            target_param.data.copy_(
+                self.tau * param.data + (1.0 - self.tau) * target_param.data
+            )
+            
+    def process_sequences(self, sequences, lengths):
+        """Process variable length sequences with masking"""
+        if lengths is not None:
+            mask = torch.arange(sequences.size(1), device=self.device)[None, :] < lengths[:, None]
+            mask = mask.float().unsqueeze(-1)
+            masked_seq = sequences * mask
+            return masked_seq.sum(dim=1) / lengths.float().unsqueeze(-1).clamp(min=1)
+        else:
+            return sequences.mean(dim=1)

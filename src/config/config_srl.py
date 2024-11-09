@@ -3,27 +3,26 @@ from pathlib import Path
 class Config:
     def __init__(self):
         # Set up paths relative to project root
-        self.base_path = Path(__file__).parent.parent.parent  # Gets to project root
+        self.base_path = Path(__file__).parent.parent.parent
         self.data_path = self.base_path / 'data'
         self.processed_path = self.data_path / 'processed'
 
-        # Model hyperparameters
-        self.batch_size = 30  # 10, 20
+        # Model hyperparameters adjusted for your data
+        self.batch_size = 30
         self.gamma = 0.99
-        self.tau = 0.001  # 0.005
-        self.lra = 0.001
-        self.lrc = 0.005
-        self.epsilon = 0.5  # 0, 0.1, 0.2, 0.3, 0.4, ..., 0.9, 1
-        self.tiem_stamp = 5  # 3, 6, 9
-        self.time_stamp = 5  # Added because both spellings are used
-        self.lab_size = 12
-        self.demo_size = 8
-        self.max_reward = 30
-        self.state_dim = 12
+        self.tau = 0.001
+        self.lra = 0.001  # Learning rate for actor
+        self.lrc = 0.005  # Learning rate for critic
+        self.epsilon = 0.5  # Balance between SL and RL
+        self.time_stamp = 50  # Based on your sequence length
+        self.lab_size = 8   # From your timeseries shape
+        self.demo_size = 4  # [age, gender, weight, height]
+        self.med_size = 118  # From your ATC codes + 1 for padding
+        self.di_size = 507   # From your ICD9 codes + 1 for padding
+        self.debug_embeddings = True  # Add this line
+        self.state_dim = 12  # State dimension
         self.seed = 1337
-        self.episode_count = 100000
-        self.med_size = 180  # 1000
-        self.di_size = 39
+        self.episode_count = 100  # Changed from 100000 to 100
 
         # Create directories if they don't exist
         self.processed_path.mkdir(parents=True, exist_ok=True)

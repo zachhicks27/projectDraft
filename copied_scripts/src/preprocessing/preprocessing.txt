@@ -439,7 +439,7 @@ def get_top_k_medications(prescriptions_df, k=1000, atc_csv_path='atc_codes.csv'
     prescriptions_processed = prescriptions_df[prescriptions_df['drug'].isin(top_medications)].copy()
     
     # Map to ATC codes using CSV file
-    prescriptions_processed = map_to_atc_codes(prescriptions_processed, r'data\atc_classes.csv')
+    prescriptions_processed = map_to_atc_codes(prescriptions_processed, r'data/atc_classes.csv')
     
     return prescriptions_processed, set(prescriptions_processed['drug'].unique())
 
@@ -463,7 +463,7 @@ def save_processed_data(data_dict, prefix, output_dir='data/processed'):
 
 if __name__ == "__main__":
     # Set paths
-    base_path = Path('data\mimic-iii-clinical-database-demo-1.4')
+    base_path = Path('data/mimic-iii-clinical-database-demo-1.4')
     processed_path = Path('data/processed')
     
     # Create directories if they don't exist
