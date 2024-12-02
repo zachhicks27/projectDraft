@@ -1,0 +1,206 @@
+Filename: ADMISSIONS.csv
+Column Names:
+row_id, subject_id, hadm_id, admittime, dischtime, deathtime, admission_type, admission_location, discharge_location, insurance, language, religion, marital_status, ethnicity, edregtime, edouttime, diagnosis, hospital_expire_flag, has_chartevents_data
+First Row of Data:
+12258, 10006, 142345, 2164-10-23 21:09:00, 2164-11-01 17:15:00, nan, EMERGENCY, EMERGENCY ROOM ADMIT, HOME HEALTH CARE, Medicare, nan, CATHOLIC, SEPARATED, BLACK/AFRICAN AMERICAN, 2164-10-23 16:43:00, 2164-10-23 23:00:00, SEPSIS, 0, 1
+
+----------------------------------------
+
+Filename: CALLOUT.csv
+Column Names:
+row_id, subject_id, hadm_id, submit_wardid, submit_careunit, curr_wardid, curr_careunit, callout_wardid, callout_service, request_tele, request_resp, request_cdiff, request_mrsa, request_vre, callout_status, callout_outcome, discharge_wardid, acknowledge_status, createtime, updatetime, acknowledgetime, outcometime, firstreservationtime, currentreservationtime
+First Row of Data:
+3917, 10017, 199207, 7, nan, 45, CCU, 1, MED, 1, 0, 0, 0, 0, Inactive, Discharged, 45.0, Acknowledged, 2149-05-31 10:44:34, 2149-05-31 10:44:34, 2149-05-31 15:08:04, 2149-05-31 22:40:02, nan, nan
+
+----------------------------------------
+
+Filename: CAREGIVERS.csv
+Column Names:
+row_id, cgid, label, description
+First Row of Data:
+2228, 16174, RO, Read Only
+
+----------------------------------------
+
+Filename: CHARTEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, itemid, charttime, storetime, cgid, value, valuenum, valueuom, warning, error, resultstatus, stopped
+First Row of Data:
+5279021, 40124, 126179, 279554.0, 223761, 2130-02-04 04:00:00, 2130-02-04 04:35:00, 19085, 95.9, 95.9, ?F, 0.0, 0.0, nan, nan
+
+----------------------------------------
+
+Filename: CPTEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, costcenter, chartdate, cpt_cd, cpt_number, cpt_suffix, ticket_id_seq, sectionheader, subsectionheader, description
+First Row of Data:
+4615, 10117, 105150, ICU, nan, 99254, 99254, nan, 1.0, Evaluation and management, Consultations, nan
+
+----------------------------------------
+
+Filename: DATETIMEEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, itemid, charttime, storetime, cgid, value, valueuom, warning, error, resultstatus, stopped
+First Row of Data:
+208474, 10076, 198503, 201006.0, 5684, 2107-03-25 04:00:00, 2107-03-25 04:34:00, 20482, 2107-03-24 00:00:00, Date, nan, nan, nan, NotStopd
+
+----------------------------------------
+
+Filename: DIAGNOSES_ICD.csv
+Column Names:
+row_id, subject_id, hadm_id, seq_num, icd9_code
+First Row of Data:
+112344, 10006, 142345, 1, 99591
+
+----------------------------------------
+
+Filename: DRGCODES.csv
+Column Names:
+row_id, subject_id, hadm_id, drg_type, drg_code, description, drg_severity, drg_mortality
+First Row of Data:
+1338, 10130, 156668, HCFA, 148, MAJOR SMALL & LARGE BOWEL PROCEDURES WITH COMPLICATIONS, COMORBIDITIES, nan, nan
+
+----------------------------------------
+
+Filename: D_CPT.csv
+Column Names:
+row_id, category, sectionrange, sectionheader, subsectionrange, subsectionheader, codesuffix, mincodeinsubsection, maxcodeinsubsection
+First Row of Data:
+1, 1, 99201-99499, Evaluation and management, 99201-99216, Office/other outpatient services, nan, 99201, 99216
+
+----------------------------------------
+
+Filename: D_ICD_DIAGNOSES.csv
+Column Names:
+row_id, icd9_code, short_title, long_title
+First Row of Data:
+1, 01716, Erythem nod tb-oth test, Erythema nodosum with hypersensitivity reaction in tuberculosis, tubercle bacilli not found by bacteriological or histological examination, but tuberculosis confirmed by other methods [inoculation of animals]
+
+----------------------------------------
+
+Filename: D_ICD_PROCEDURES.csv
+Column Names:
+row_id, icd9_code, short_title, long_title
+First Row of Data:
+1, 1423, Chorioret les xenon coag, Destruction of chorioretinal lesion by xenon arc photocoagulation
+
+----------------------------------------
+
+Filename: D_ITEMS.csv
+Column Names:
+row_id, itemid, label, abbreviation, dbsource, linksto, category, unitname, param_type, conceptid
+First Row of Data:
+1, 1435, Sustained Nystamus, nan, carevue, chartevents, nan, nan, nan, nan
+
+----------------------------------------
+
+Filename: D_LABITEMS.csv
+Column Names:
+row_id, itemid, label, fluid, category, loinc_code
+First Row of Data:
+1, 50800, SPECIMEN TYPE, BLOOD, BLOOD GAS, nan
+
+----------------------------------------
+
+Filename: ICUSTAYS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, dbsource, first_careunit, last_careunit, first_wardid, last_wardid, intime, outtime, los
+First Row of Data:
+12742, 10006, 142345, 206504, carevue, MICU, MICU, 52, 52, 2164-10-23 21:10:15, 2164-10-25 12:21:07, 1.6325
+
+----------------------------------------
+
+Filename: INPUTEVENTS_CV.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, charttime, itemid, amount, amountuom, rate, rateuom, storetime, cgid, orderid, linkorderid, stopped, newbottle, originalamount, originalamountuom, originalroute, originalrate, originalrateuom, originalsite
+First Row of Data:
+1184, 10114, 167957, 234989, 2171-11-03 15:00:00, 30056, 400.0, ml, nan, nan, 2171-11-03 16:27:00, 18367.0, 2557279, 2557279, nan, nan, nan, ml, Oral, nan, nan, nan
+
+----------------------------------------
+
+Filename: INPUTEVENTS_MV.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, starttime, endtime, itemid, amount, amountuom, rate, rateuom, storetime, cgid, orderid, linkorderid, ordercategoryname, secondaryordercategoryname, ordercomponenttypedescription, ordercategorydescription, patientweight, totalamount, totalamountuom, isopenbag, continueinnextdept, cancelreason, statusdescription, comments_editedby, comments_canceledby, comments_date, originalamount, originalrate
+First Row of Data:
+118897, 42367, 139932, 250305, 2147-10-29 16:45:00, 2147-10-29 16:46:00, 225799, 60.0, ml, nan, nan, 2147-10-29 16:45:00, 16027, 11922, 11922, 14-Oral/Gastric Intake, nan, Main order parameter, Bolus, 70.0, 60.0, ml, 0, 0, 0, FinishedRunning, nan, nan, nan, 60.0, 60.0
+
+----------------------------------------
+
+Filename: LABEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, itemid, charttime, value, valuenum, valueuom, flag
+First Row of Data:
+6244563, 10006, nan, 50868, 2164-09-24 20:21:00, 19, 19.0, mEq/L, nan
+
+----------------------------------------
+
+Filename: MICROBIOLOGYEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, chartdate, charttime, spec_itemid, spec_type_desc, org_itemid, org_name, isolate_num, ab_itemid, ab_name, dilution_text, dilution_comparison, dilution_value, interpretation
+First Row of Data:
+134694, 10006, 142345, 2164-10-23 00:00:00, 2164-10-23 15:30:00, 70012, BLOOD CULTURE, 80155.0, STAPHYLOCOCCUS, COAGULASE NEGATIVE, 2.0, nan, nan, nan, nan, nan, nan
+
+----------------------------------------
+
+Filename: NOTEEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, chartdate, charttime, storetime, category, description, cgid, iserror, text
+
+----------------------------------------
+
+Filename: OUTPUTEVENTS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, charttime, itemid, value, valueuom, storetime, cgid, stopped, newbottle, iserror
+First Row of Data:
+6540, 10114, 167957, 234989.0, 2171-10-30 20:00:00, 40055, 39.0, ml, 2171-10-30 20:38:00, 15029, nan, nan, nan
+
+----------------------------------------
+
+Filename: PATIENTS.csv
+Column Names:
+row_id, subject_id, gender, dob, dod, dod_hosp, dod_ssn, expire_flag
+First Row of Data:
+9467, 10006, F, 2094-03-05 00:00:00, 2165-08-12 00:00:00, 2165-08-12 00:00:00, 2165-08-12 00:00:00, 1
+
+----------------------------------------
+
+Filename: PRESCRIPTIONS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, startdate, enddate, drug_type, drug, drug_name_poe, drug_name_generic, formulary_drug_cd, gsn, ndc, prod_strength, dose_val_rx, dose_unit_rx, form_val_disp, form_unit_disp, route
+First Row of Data:
+32600, 42458, 159647, nan, 2146-07-21 00:00:00, 2146-07-22 00:00:00, MAIN, Pneumococcal Vac Polyvalent, Pneumococcal Vac Polyvalent, PNEUMOcoccal Vac Polyvalent, PNEU25I, 48548.0, 6494300.0, 25mcg/0.5mL Vial, 0.5, mL, 1, VIAL, IM
+
+----------------------------------------
+
+Filename: PROCEDUREEVENTS_MV.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, starttime, endtime, itemid, value, valueuom, location, locationcategory, storetime, cgid, orderid, linkorderid, ordercategoryname, secondaryordercategoryname, ordercategorydescription, isopenbag, continueinnextdept, cancelreason, statusdescription, comments_editedby, comments_canceledby, comments_date
+First Row of Data:
+8641, 42367, 139932, 250305, 2147-10-03 16:40:00, 2147-10-06 20:00:00, 224263, 4520, min, Right Femoral., Invasive Venous, 2147-10-06 20:16:00, 16890, 7151568, 7151568, Invasive Lines, nan, Task, 1, 0, 0, FinishedRunning, nan, nan, nan
+
+----------------------------------------
+
+Filename: PROCEDURES_ICD.csv
+Column Names:
+row_id, subject_id, hadm_id, seq_num, icd9_code
+First Row of Data:
+3994, 10114, 167957, 1, 3605
+
+----------------------------------------
+
+Filename: SERVICES.csv
+Column Names:
+row_id, subject_id, hadm_id, transfertime, prev_service, curr_service
+First Row of Data:
+14974, 10006, 142345, 2164-10-23 21:10:15, nan, MED
+
+----------------------------------------
+
+Filename: TRANSFERS.csv
+Column Names:
+row_id, subject_id, hadm_id, icustay_id, dbsource, eventtype, prev_careunit, curr_careunit, prev_wardid, curr_wardid, intime, outtime, los
+First Row of Data:
+54440, 10006, 142345, 206504.0, carevue, admit, nan, MICU, nan, 52.0, 2164-10-23 21:10:15, 2164-10-25 12:21:07, 39.18
+
+----------------------------------------
+

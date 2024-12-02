@@ -1,0 +1,13 @@
+{
+    "confusion_matrix": {
+        "true_pos": 25,
+        "true_neg": 1508,
+        "false_pos": 1,
+        "false_neg": 0
+    },
+    "metrics": {
+        "precision": 0.9615384615384616,
+        "recall": 1.0,
+        "f1": 0.9803921568627451
+    }
+}
